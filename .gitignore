@@ -1,0 +1,7 @@
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars
+*.pem
+week5-deployer-key.pem
+~-key.pem
