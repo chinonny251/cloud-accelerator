@@ -69,3 +69,12 @@ Today, I advanced my custom network architecture by provisioning active compute 
 * **Infrastructure as Code (IaC):** Automated the deployment of EC2 virtual instances using Terraform, integrating `tls_private_key` and `local_file` providers to generate secure SSH key pairs on the fly.
 * **Stateful Firewalls (Security Groups):** Configured distinct firewalls mapping explicit ingress controls. The private instance uses security group chaining to completely isolate it from the wider internet.
 * **SSH Agent Forwarding:** Practised multi-hop cloud networking by forwarding local cryptographic keys through the bastion host to access the hidden backend workload, ensuring private keys are never uploaded to the cloud.
+## Week 5, Day 2: Automated Workload Bootstrapping with EC2 User Data
+
+### Architecture Progress
+Successfully transitioned infrastructure from static components to automated, dynamic setups using EC2 User Data scripts. Verified network-hop paths and investigated the behavioral limitations of bootstrapping instances inside isolated private subnets.
+
+### Implementations & Automations
+* **Public Subnet Configuration:** Provisioned an automated Nginx server (`web_bootstrap.sh`) on boot to serve a custom HTML portfolio page, explicitly validating external visibility configurations over HTTP (Port 80).
+* **Private Subnet Configuration:** Drafted a secure background runtime hook (`app_bootstrap.sh`) to pre-install Docker container runtimes on an isolated backend node.
+* **Network Observation:** Verified that instances in an isolated private subnet fail to pull external repository packages (e.g., Docker) on boot due to the absence of an outbound internet route. This establishes the operational prerequisite for a NAT Gateway.
