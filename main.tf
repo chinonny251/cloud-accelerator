@@ -238,7 +238,7 @@ resource "aws_flow_log" "vpc_flow_log" {
 # Attach a Pristine S3 Bucket Policy using Raw JSON Heredoc
 resource "aws_s3_bucket_policy" "allow_flow_logs" {
   bucket = aws_s3_bucket.variable_bucket.id
-
+  force_destroy = true # ◄── Added: Allows Terraform to wipe flow logs and drop the bucket cleanly
   policy = <<POLICY
 {
   "Version": "2012-10-17",
