@@ -33,10 +33,10 @@ resource "aws_subnet" "public" {
 
 # Private Subnet
 resource "aws_subnet" "private" {
-  count             = 1
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
-  tags              = merge(local.common_tags, { Name = "w5-private-subnet" })
+  count      = 1
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.2.0/24"
+  tags       = merge(local.common_tags, { Name = "w5-private-subnet" })
 }
 
 # Internet Gateway so our Public Subnet can talk to the internet
@@ -78,7 +78,7 @@ resource "aws_security_group" "public_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.my_public_ip] #  Fixed syntax typo here
+    cidr_blocks = [var.my_public_ip] # ◄── Restored: Kept back behind your specific home IP parameter
   }
 
   ingress {
@@ -169,4 +169,107 @@ resource "aws_instance" "private_app" {
   associate_public_ip_address = false
 
   tags = merge(local.common_tags, { Name = "w5-private-app" })
+}
+
+# ==========================================
+# 4. ELASTIC IP & NAT GATEWAY TOPOLOGY
+# ==========================================
+
+# Allocate a Static Public IPv4 Address for the NAT Gateway
+resource "aws_eip" "nat_eip" {
+  domain     = "vpc"
+  depends_on = [aws_internet_gateway.gw] # Ensures correct ordering on creation
+  tags       = merge(local.common_tags, { Name = "w5-nat-eip" })
+}
+
+# Provision the Managed NAT Gateway inside the Public Subnet Tier
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public[0].id # Placed inside the public entry subnet
+
+  tags       = merge(local.common_tags, { Name = "w5-nat-gateway" })
+  depends_on = [aws_internet_gateway.gw] # Best practice to avoid initialization race conditions
+}
+
+# ==========================================
+# 5. PRIVATE ROUTING INFRASTRUCTURE
+# ==========================================
+
+# Create a Dedicated Route Table for Private Workloads
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main.id
+
+  # ROUTE: Send all outbound internet traffic (0.0.0.0/0) through the NAT Gateway
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat_gw.id
+  }
+
+  tags = merge(local.common_tags, { Name = "w5-private-rt" })
+}
+
+# Associate the Private Route Table explicitly with your Private Subnet
+resource "aws_route_table_association" "private_assoc" {
+  subnet_id      = aws_subnet.private[0].id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+# ==========================================
+# OUTPUTS (Printing dynamic resource IPs)
+# ==========================================
+output "private_instance_ip" {
+  value       = aws_instance.private_app.private_ip
+  description = "The true internal IP of the backend application host"
+}
+# ==========================================
+# 6. VPC FLOW LOGS & AUDIT LOGGING
+# ==========================================
+
+# Create the Flow Log recorder for our custom VPC
+resource "aws_flow_log" "vpc_flow_log" {
+  log_destination      = aws_s3_bucket.variable_bucket.arn
+  log_destination_type = "s3"
+  traffic_type         = "ALL" # Captures both ACCEPT and REJECT traffic patterns
+  vpc_id               = aws_vpc.main.id
+
+  tags = merge(local.common_tags, { Name = "w5-vpc-flow-logs" })
+}
+
+# Attach a Pristine S3 Bucket Policy using Raw JSON Heredoc
+resource "aws_s3_bucket_policy" "allow_flow_logs" {
+  bucket = aws_s3_bucket.variable_bucket.id
+
+  policy = <<POLICY
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AWSLogDeliveryWrite",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "delivery.logs.amazonaws.com"
+      },
+      "Action": "s3:PutObject",
+      "Resource": "${aws_s3_bucket.variable_bucket.arn}/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-acl": "bucket-owner-full-control"
+        }
+      }
+    },
+    {
+      "Sid": "AWSLogDeliveryCheck",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "delivery.logs.amazonaws.com"
+      },
+      "Action": [
+        "s3:GetBucketAcl",
+        "s3:ListBucket"
+      ],
+      "Resource": "${aws_s3_bucket.variable_bucket.arn}"
+    }
+  ]
+}
+POLICY
 }

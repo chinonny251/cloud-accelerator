@@ -78,3 +78,16 @@ Successfully transitioned infrastructure from static components to automated, dy
 * **Public Subnet Configuration:** Provisioned an automated Nginx server (`web_bootstrap.sh`) on boot to serve a custom HTML portfolio page, explicitly validating external visibility configurations over HTTP (Port 80).
 * **Private Subnet Configuration:** Drafted a secure background runtime hook (`app_bootstrap.sh`) to pre-install Docker container runtimes on an isolated backend node.
 * **Network Observation:** Verified that instances in an isolated private subnet fail to pull external repository packages (e.g., Docker) on boot due to the absence of an outbound internet route. This establishes the operational prerequisite for a NAT Gateway.
+## Week 5, Day 4: VPC Flow Logs and Security Group Auditing
+
+### Architecture Progress
+Reinforced the portfolio architecture by integrating full-stack visibility and verifying dynamic runtime infrastructure hooks. Successfully debugged race-condition timing sequences to validate safe network routing layers across isolated subnets.
+
+### Implementations & Automations
+* **VPC Flow Logging:** Provisioned an `aws_flow_log` resource bound globally to our VPC tier, capturing raw ingress/egress network interface data.
+* **Heredoc Policy Management:** Structured a clean JSON Heredoc bucket policy (`aws_s3_bucket_policy`) to authorize the native AWS Log Delivery engine to deposit gzipped log payloads securely into the portfolio S3 bucket.
+* **Dynamic Network Egress Verification:** Validated the internal NAT Gateway routing path by successfully pulling and configuring `Docker version 29.1.3` directly from an isolated private host node (`10.0.2.128`).
+
+### Verified Metrics
+* **Private Target Node:** 10.0.2.128 (Multi-hop via SSH Agent Forwarding)
+* **Container Runtime:** Docker Engine v29.1.3 Active
