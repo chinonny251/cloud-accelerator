@@ -26,7 +26,7 @@ jobs:
       - name: Setup Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.5.7" # Pinning version ensures environment consistency
+          terraform_version: "1.11.4" # Pinning version ensures environment consistency
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.5.7"
+          terraform_version: "1.11.4"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
