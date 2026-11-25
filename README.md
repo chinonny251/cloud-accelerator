@@ -91,3 +91,17 @@ Reinforced the portfolio architecture by integrating full-stack visibility and v
 ### Verified Metrics
 * **Private Target Node:** 10.0.2.128 (Multi-hop via SSH Agent Forwarding)
 * **Container Runtime:** Docker Engine v29.1.3 Active
+## Week 6: Automated CI/CD Infrastructure Pipeline & Remote State
+
+### Architecture Overview
+Transitioned from manual local Terraform deployments to a fully automated, two-stage CI/CD pipeline using **GitHub Actions** and a centralized **AWS S3 Remote Backend**.
+
+```text
+[Local WSL Workspace] ──(git push)──► [GitHub Repository]
+                                             │
+                            ┌────────────────┴────────────────┐
+                            ▼                                 ▼
+             [Stage 1: CI (Validation)]        [Stage 2: CD (Deployment)]
+              • Formatting Gate (fmt)           • Encrypted AWS Secrets Auth
+              • Remote S3 State Init            • S3 Lockfile Acquisition
+              • Syntax Validation               • Automated Apply (main)
