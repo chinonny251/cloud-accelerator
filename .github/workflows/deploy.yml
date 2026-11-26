@@ -1,4 +1,4 @@
-name: "AWS Infrastructure Deployment"
+name: "AWS Infrastructure & Container CI/CD"
 
 on:
   push:
@@ -12,9 +12,27 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: "us-east-1" # Update this to your target AWS region
+  AWS_REGION: "us-east-1"
 
 jobs:
+  docker-ci:
+    name: "Docker Build & Health Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t cloud-health-app:ci ./local-docker-lab
+
+      - name: Verify Container Health Endpoint
+        run: |
+          docker run -d --name ci-health-check -p 8080:80 cloud-health-app:ci
+          sleep 2
+          curl -f http://localhost:8080 | grep "SUCCESS"
+          docker stop ci-health-check
+
   terraform-ci:
     name: "Terraform Validation & Plan"
     runs-on: ubuntu-latest
@@ -26,7 +44,7 @@ jobs:
       - name: Setup Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.11.4" # Pinning version ensures environment consistency
+          terraform_version: "1.11.4"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,27 +54,21 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Format Check
-        id: fmt
         run: terraform fmt -check
-        continue-on-error: false
 
       - name: Terraform Initialize
-        id: init
         run: terraform init
 
       - name: Terraform Validate
-        id: validate
         run: terraform validate
 
       - name: Terraform Plan
-        id: plan
         if: github.event_name == 'pull_request'
         run: terraform plan -no-color
-        continue-on-error: false
 
   terraform-cd:
     name: "Terraform Apply"
-    needs: terraform-ci
+    needs: [docker-ci, terraform-ci]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
